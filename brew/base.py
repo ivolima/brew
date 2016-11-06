@@ -6,17 +6,11 @@ from brew.combination.combiner import Combiner
 from brew.metrics.evaluation import auc_score
 
 
-def transform2votes(output, n_classes):
+def transform2votes(y_pred, n_classes):
 
-    n_samples = output.shape[0]
-
+    n_samples = y_pred.shape[0]
     votes = np.zeros((n_samples, n_classes), dtype=int)
-    # uses the predicted label as index for the vote matrix
-    # for i in range(n_samples):
-    #    idx = int(output[i])
-    #    votes[i, idx] = 1
-    votes[np.arange(n_samples), output.astype(int)] = 1
-    # assert np.equal(votes2.astype(int), votes.astype(int)).all()
+    votes[np.arange(n_samples), y_pred.astype(int)] = 1
 
     return votes.astype(int)
 
@@ -181,7 +175,8 @@ class Ensemble(object):
             # trained with the same number of classes
             classes__ = self.get_classes()
             n_classes = len(classes__)
-            out = np.zeros((X.shape[0], n_classes, len(self.classifiers)))
+            out_dtype = int if mode == 'votes' else float
+            out = np.zeros((X.shape[0], n_classes, len(self.classifiers)), dtype=out_dtype)
 
             for i, c in enumerate(self.classifiers):
                 if mode == 'probs':
@@ -190,9 +185,8 @@ class Ensemble(object):
                     out[:, :, i] = probas
 
                 elif mode == 'votes':
-                    tmp = c.predict(X)  # (n_samples,)
-                    # (n_samples, n_classes)
-                    votes = transform2votes(tmp, n_classes)
+                    y_pred = c.predict(X)
+                    votes = transform2votes(y_pred, n_classes)
                     out[:, :, i] = votes
 
         return out
